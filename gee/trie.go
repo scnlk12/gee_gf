@@ -1,3 +1,6 @@
+package gee
+import "strings"
+
 type node struct {
 	pattern string // 待匹配路由 例如 /p/:lang
 	part string // 路由中的一部分 例如 :lang
@@ -43,7 +46,7 @@ func (n *node) insert(pattern string, parts []string, height int) {
 	if child == nil {
 		child = &node{
 			part: part,
-			isWild: part[0] == ':' || part[0] == '*'
+			isWild: part[0] == ':' || part[0] == '*',
 		}
 		n.children = append(n.children, child)
 	}
