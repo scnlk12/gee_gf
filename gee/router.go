@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type router struct {
+type Router struct {
 	roots	 map[string]*node
 	handlers map[string]HandleFunc
 }
@@ -14,8 +14,8 @@ type router struct {
 // roots key eg, roots['GET'] roots['POST']
 // handlers key eg, handlers['GET-/p/:lang/doc'], handlers['POST-/p/book']
 
-func newRouter() *router {
-	return &router{
+func newRouter() *Router {
+	return &Router{
 		roots: make(map[string]*node),
 		handlers: make(map[string]HandleFunc),
 	}
@@ -36,7 +36,7 @@ func parsePattern(pattern string) []string {
 	return parts
 }
 
-func (r *router) addRoute(method string, pattern string, handler HandleFunc) {
+func (r *Router) addRoute(method string, pattern string, handler HandleFunc) {
 	parts := parsePattern(pattern)
 	key := method + "-" + pattern
 	_, ok := r.roots[method]
@@ -49,7 +49,7 @@ func (r *router) addRoute(method string, pattern string, handler HandleFunc) {
 }
 
 
-func (r *router) getRoute(method string, path string) (*node, map[string]string) {
+func (r *Router) getRoute(method string, path string) (*node, map[string]string) {
 	searchParts := parsePattern(path)
 	params := make(map[string]string)
 	root, ok := r.roots[method]
@@ -74,7 +74,7 @@ func (r *router) getRoute(method string, path string) (*node, map[string]string)
 	return nil, nil
 }
 
-func (r *router) handle(c *Context) {
+func (r *Router) handle(c *Context) {
 	n, params := r.getRoute(c.Method, c.Path)
 	if n != nil {
 		c.Params = params
