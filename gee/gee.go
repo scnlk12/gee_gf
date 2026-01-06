@@ -3,6 +3,7 @@ package gee
 import (
 	"log"
 	"net/http"
+	"strings"
 )
 
 // HandlerFunc defines the request handler used by gee
@@ -57,8 +58,22 @@ func (group *RouterGroup) POST(pattern string, handler HandleFunc) {
 	group.addRoute("POST", pattern, handler)
 }
 
+// Use is defined to add middleware to the group
+func (group *RouterGroup) Use(middlewares ...HandleFunc) {
+	group.middlewares = append(group.middlewares, middlewares...)
+}
+
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	var middlewares []HandleFunc
+	// 当我们接收到一个具体请求时，要判断该请求适用于哪些中间件，通过URL的前缀判断
+	for _, group := range engine.groups {
+		if strings.HasPrefix(req.URL.Path, group.prefix) {
+			middlewares = append(middlewares, group.middlewares...)
+		}
+	}
+	// 得到中间件列表后 赋值给 c.handlers
 	c := newContext(w, req)
+	c.handlers = middlewares
 	engine.router.handle(c)
 }
 

@@ -11,13 +11,16 @@ type H map[string]interface{}
 type Context struct {
 	// origin objects
 	Writer http.ResponseWriter
-	Req *http.Request
+	Req    *http.Request
 	// request info
-	Path string
+	Path   string
 	Method string
 	Params map[string]string
 	// response info
 	StatusCode int
+	// middleware
+	handlers []HandleFunc
+	index    int // 记录当前执行到第几个中间件
 }
 
 func (c *Context) Param(key string) string {
@@ -28,9 +31,19 @@ func (c *Context) Param(key string) string {
 func newContext(w http.ResponseWriter, req *http.Request) *Context {
 	return &Context{
 		Writer: w,
-		Req: req,
-		Path: req.URL.Path,
+		Req:    req,
+		Path:   req.URL.Path,
 		Method: req.Method,
+		index:  -1,
+	}
+}
+
+// c.Next() 表示等待执行其他的中间件或用户的Handler
+func (c *Context) Next()  {
+	c.index++
+	s := len(c.handlers)
+	for ; c.index < s; c.index++ {
+		c.handlers[c.index](c)
 	}
 }
 
@@ -71,8 +84,13 @@ func (c *Context) Data(code int, data []byte) {
 	c.Writer.Write(data)
 }
 
-func (c *Context) HTML(code int, html string)  {
+func (c *Context) HTML(code int, html string) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
 	c.Writer.Write([]byte(html))
+}
+
+func (c *Context) Fail(code int, err string) {
+	c.index = len(c.handlers)
+	c.JSON(code, H{"message": err})
 }
