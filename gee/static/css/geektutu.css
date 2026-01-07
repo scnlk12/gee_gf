@@ -1,0 +1,204 @@
+/* 
+ * 黄色字体样式表
+ * 作者：AI助手
+ * 日期：2023年10月
+ */
+
+/* ====== 基础黄色字体样式 ====== */
+
+p {
+    color: yellow;
+}
+
+/* 1. 纯黄色字体 */
+.yellow-text {
+    color: yellow;
+}
+
+/* 2. 更深的金黄色（提高可读性） */
+.gold-text {
+    color: #FFD700;
+}
+
+/* 3. 浅黄色（柔和版本） */
+.light-yellow-text {
+    color: #FFFFE0;
+}
+
+/* 4. 琥珀色/橙黄色 */
+.amber-text {
+    color: #FFBF00;
+}
+
+/* ====== 带背景的黄色字体样式（增强可读性） ====== */
+
+/* 深色背景上的黄色文字 */
+.yellow-on-dark {
+    color: yellow;
+    background-color: #333333;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+/* 黑色背景上的金黄色 */
+.gold-on-black {
+    color: #FFD700;
+    background-color: #000000;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* ====== 带效果的黄色字体 ====== */
+
+/* 发光黄色文字 */
+.glow-yellow {
+    color: yellow;
+    text-shadow: 0 0 5px #FFD700, 0 0 10px #FFD700;
+}
+
+/* 渐变黄色文字 */
+.gradient-yellow {
+    background: linear-gradient(to right, #FFD700, #FFA500);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
+}
+
+/* ====== 应用黄色字体的通用类 ====== */
+
+/* 应用于段落 */
+.yellow-paragraph {
+    color: #FFD700;
+    line-height: 1.6;
+    font-size: 1.1em;
+}
+
+/* 应用于标题 */
+.yellow-heading {
+    color: #FFD700;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 应用于链接 */
+.yellow-link {
+    color: #FFD700;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.yellow-link:hover {
+    color: #FFA500;
+    text-decoration: underline;
+}
+
+/* ====== 响应式黄色字体 ====== */
+
+/* 在不同设备上调整黄色亮度以提高可读性 */
+@media (max-width: 768px) {
+    .responsive-yellow {
+        color: #FFD700;
+        /* 移动设备使用更亮的黄色 */
+    }
+}
+
+@media (min-width: 769px) {
+    .responsive-yellow {
+        color: #FFC300;
+        /* 桌面设备使用稍暗的黄色 */
+    }
+}
+
+/* ====== 特定元素黄色字体样式 ====== */
+
+/* 按钮中的黄色文字 */
+.yellow-button {
+    background-color: #222222;
+    color: #FFD700;
+    border: 2px solid #FFD700;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.yellow-button:hover {
+    background-color: #FFD700;
+    color: #222222;
+}
+
+/* 列表中的黄色文字 */
+.yellow-list li {
+    color: #FFD700;
+    margin-bottom: 8px;
+    padding-left: 10px;
+    border-left: 3px solid #FFD700;
+}
+
+/* 引用中的黄色文字 */
+.yellow-quote {
+    color: #FFD700;
+    font-style: italic;
+    border-left: 4px solid #FFD700;
+    padding-left: 15px;
+    margin: 20px 0;
+}
+
+/* ====== 黄色字体阴影变体 ====== */
+
+.yellow-with-black-shadow {
+    color: yellow;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.yellow-with-white-shadow {
+    color: #FFA500;
+    text-shadow: 1px 1px 0 white, 2px 2px 0 #FFA500;
+}
+
+/* ====== 黄色字体动画效果 ====== */
+
+@keyframes yellow-pulse {
+    0% {
+        color: #FFFFE0;
+    }
+
+    50% {
+        color: #FFD700;
+    }
+
+    100% {
+        color: #FFFFE0;
+    }
+}
+
+.pulsing-yellow {
+    animation: yellow-pulse 2s infinite;
+}
+
+/* 悬停时颜色变化 */
+.hover-yellow {
+    color: #CCCCCC;
+    transition: color 0.3s;
+}
+
+.hover-yellow:hover {
+    color: #FFD700;
+}
+
+/* ====== 使用说明 ====== */
+/*
+  使用方法：
+  1. 将此CSS文件链接到HTML文档：<link rel="stylesheet" href="yellow-font.css">
+  2. 为需要黄色字体的元素添加相应的类，例如：
+     - <p class="yellow-text">这是黄色文字</p>
+     - <h1 class="gold-text">这是金色标题</h1>
+     - <a class="yellow-link" href="#">黄色链接</a>
+  
+  提示：
+  - 黄色在白色背景上可能难以阅读，建议在深色背景上使用
+  - 可以使用带背景的类（如.yellow-on-dark）增强可读性
+  - 根据使用场景选择不同深浅的黄色
+*/

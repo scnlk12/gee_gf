@@ -21,6 +21,7 @@ type Context struct {
 	// middleware
 	handlers []HandleFunc
 	index    int // 记录当前执行到第几个中间件
+	engine *Engine // engine pointer
 }
 
 func (c *Context) Param(key string) string {
@@ -84,10 +85,12 @@ func (c *Context) Data(code int, data []byte) {
 	c.Writer.Write(data)
 }
 
-func (c *Context) HTML(code int, html string) {
+func (c *Context) HTML(code int, html string, data interface{}) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
-	c.Writer.Write([]byte(html))
+	if err := c.engine.htmlTemplates.ExecuteTemplate(c.Writer, html, data); err != nil {
+		c.Fail(500, err.Error())
+	}
 }
 
 func (c *Context) Fail(code int, err string) {

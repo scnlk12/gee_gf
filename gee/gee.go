@@ -1,8 +1,10 @@
 package gee
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -11,9 +13,11 @@ type HandleFunc func(*Context)
 
 // Engine implement the interface of ServeHTTP
 type Engine struct {
-	*RouterGroup // 将Engine作为最顶层的分组，Engine拥有RouterGroup所有的能力
-	router *router
-	groups []*RouterGroup // store all groups
+	*RouterGroup  // 将Engine作为最顶层的分组，Engine拥有RouterGroup所有的能力
+	router        *router
+	groups        []*RouterGroup     // store all groups
+	htmlTemplates *template.Template // for html render 将所有模板加载到内存中
+	funcMap       template.FuncMap   // for html render 所有自定义模板的渲染函数
 }
 
 type RouterGroup struct {
@@ -40,6 +44,16 @@ func (group *RouterGroup) Group(prefix string) *RouterGroup {
 	}
 	engine.groups = append(engine.groups, newGroup)
 	return newGroup
+}
+
+// 设置自定义渲染函数
+func (engine *Engine) SetFuncMap(funcMap template.FuncMap) {
+	engine.funcMap = funcMap
+}
+
+// 加载模板
+func (engine *Engine) LoadHTMLGlob(pattern string) {
+	engine.htmlTemplates = template.Must(template.New("").Funcs(engine.funcMap).ParseGlob(pattern))
 }
 
 func (group *RouterGroup) addRoute(method string, comp string, handler HandleFunc) {
@@ -74,7 +88,33 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// 得到中间件列表后 赋值给 c.handlers
 	c := newContext(w, req)
 	c.handlers = middlewares
+	c.engine = engine
 	engine.router.handle(c)
+}
+
+// create static handler
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandleFunc {
+	absolutePath := path.Join(group.prefix, relativePath)
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+	return func(ctx *Context) {
+		file := ctx.Param("filepath")
+		// Check if file exists and/or if we have permission to access it
+		if _, err := fs.Open(file); err != nil {
+			ctx.Status(http.StatusNotFound)
+			return
+		}
+
+		fileServer.ServeHTTP(ctx.Writer, ctx.Req)
+	}
+}
+
+// serve static files
+// 暴露给用户 用户可以将磁盘上的某个文件夹root映射到路由relativePath
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+	// Register GET handlers
+	group.GET(urlPattern, handler)
 }
 
 // Run defines the method to start a http server
