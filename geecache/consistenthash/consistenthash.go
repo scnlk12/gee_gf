@@ -1,4 +1,4 @@
-package geecache
+package consistenthash
 
 import (
 	"hash/crc32"

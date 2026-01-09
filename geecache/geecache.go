@@ -12,20 +12,52 @@ type Getter interface {
 }
 
 // A GetterFunc implements Getter with a function
-type GetterFunc func (key string) ([]byte, error)
+type GetterFunc func(key string) ([]byte, error)
 
 // A Group is a cache namespace and associated data loaded spread over
 // 一个Group可以认为是一个缓存的命名空间
 type Group struct {
-	name string // 每个Group拥有一个唯一的名称name
-	getter Getter // 缓存未命中时获取源数据的回调
-	mainCache cache // 一开始实现的并发缓存
+	name      string // 每个Group拥有一个唯一的名称name
+	getter    Getter // 缓存未命中时获取源数据的回调
+	mainCache cache  // 一开始实现的并发缓存
+	peers     PeerPicker
 }
 
 var (
-	mu sync.RWMutex
+	mu     sync.RWMutex
 	groups = make(map[string]*Group)
 )
+
+// 将 实现了PeerPicker接口的HTTPPool注入到Group中
+func (g *Group) RegisterPeers(peers PeerPicker) {
+	if g.peers != nil {
+		panic("RegisterPeerPicker called more than once")
+	}
+	g.peers = peers
+}
+
+// 使用PickPeer()方法选择节点，若非本机节点，则调用getFromPeer()从远程获取
+// 若是本机节点或失败 则回退到getLocally()
+func (g *Group) load(key string) (value Byteview, err error) {
+	if g.peers != nil {
+		if peer, ok := g.peers.PickPeer(key); ok {
+			if value, err := g.getFromPeer(peer, key); err == nil {
+				return value, nil
+			}
+		}
+		log.Println("[GeeCache] Failed to get from peer", err)
+	}
+	return g.getLocally(key)
+}
+
+// 使用实现了PeerGetter接口的httpGetter从访问远程节点，获取缓存值
+func (g *Group) getFromPeer(peer PeerGetter, key string) (Byteview, error) {
+	bytes, err := peer.Get(g.name, key)
+	if err != nil {
+		return Byteview{}, err
+	}
+	return Byteview{b: bytes}, nil
+}
 
 // Get implements Getter interface function
 // 回调函数 当缓存不存在时，调用这个函数，得到源数据
@@ -44,18 +76,20 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 	mu.Lock()
 	defer mu.Unlock()
 	g := &Group{
-		name: name,
-		getter: getter,
+		name:      name,
+		getter:    getter,
+		// 延迟初始化
 		mainCache: cache{cacheBytes: cacheBytes},
 	}
 	groups[name] = g
 	return g
 }
 
-// GetGroup returns the named previously created with NewGroup, 
+// GetGroup returns the named previously created with NewGroup,
 // or nil if there's no such groups
-// 获取特定名称的Group 使用只读锁 因为不涉及任何冲突变量的写操作 
+// 获取特定名称的Group
 func GetGroup(name string) *Group {
+	// 使用只读锁 因为不涉及任何冲突变量的写操作
 	mu.RLock()
 	g := groups[name]
 	mu.RUnlock()
@@ -83,11 +117,6 @@ func (g *Group) Get(key string) (Byteview, error) {
 	}
 
 	return g.load(key)
-}
-
-func (g *Group) load(key string) (value Byteview, err error) {
-	// 分布式场景下会调用getFormPeer从其他节点获取
-	return g.getLocally(key)
 }
 
 // 调用用户回调函数g.getter.Get()获取源数据 并将源数据添加到缓存mainCache中
