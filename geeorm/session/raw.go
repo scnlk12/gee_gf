@@ -2,19 +2,26 @@ package session
 
 import (
 	"database/sql"
+	"geeorm/dialect"
 	"geeorm/log"
+	"geeorm/schema"
 	"strings"
 )
 
 type Session struct {
-	db      *sql.DB // 使用sql.Open()连接数据库成功之后返回的指针
-	sql     strings.Builder
-	sqlVars []interface{}
+	db       *sql.DB // 使用sql.Open()连接数据库成功之后返回的指针
+	dialect  dialect.Dialect
+	refTable *schema.Schema
+	sql      strings.Builder
+	sqlVars  []interface{}
 	// 拼接SQL语句和SQL语句中占位符的对应值 用户调用Raw方法即可改变这两个变量的值
 }
 
-func New(db *sql.DB) *Session {
-	return &Session{db: db}
+func New(db *sql.DB, dialect dialect.Dialect) *Session {
+	return &Session{
+		db:      db,
+		dialect: dialect,
+	}
 }
 
 func (s *Session) Clear() {
