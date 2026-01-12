@@ -2,8 +2,11 @@ package geecache
 
 import (
 	"fmt"
+	"geecache/singleflight"
 	"log"
 	"sync"
+
+	"golang.org/x/tools/go/analysis/passes/nilfunc"
 )
 
 // A Getter loads data for a key
@@ -21,6 +24,9 @@ type Group struct {
 	getter    Getter // 缓存未命中时获取源数据的回调
 	mainCache cache  // 一开始实现的并发缓存
 	peers     PeerPicker
+	// use singleflight.Group to make sure that
+	// each key is only fetched once
+	loader *singleflight.Group
 }
 
 var (
@@ -39,15 +45,24 @@ func (g *Group) RegisterPeers(peers PeerPicker) {
 // 使用PickPeer()方法选择节点，若非本机节点，则调用getFromPeer()从远程获取
 // 若是本机节点或失败 则回退到getLocally()
 func (g *Group) load(key string) (value Byteview, err error) {
-	if g.peers != nil {
-		if peer, ok := g.peers.PickPeer(key); ok {
-			if value, err := g.getFromPeer(peer, key); err == nil {
-				return value, nil
+	// each key is only fetched once (either locally or remotely)
+	// regardless of the number of concurrent callers.
+	viewi, err := g.loader.Do(key, func() (interface{}, error) {
+		if g.peers != nil {
+			if peer, ok := g.peers.PickPeer(key); ok {
+				if value, err := g.getFromPeer(peer, key); err == nil {
+					return value, nil
+				}
 			}
+			log.Println("[GeeCache] Failed to get from peer", err)
 		}
-		log.Println("[GeeCache] Failed to get from peer", err)
+		return g.getLocally(key)
+	})
+
+	if err == nil {
+		return viewi.(Byteview), nil
 	}
-	return g.getLocally(key)
+	return
 }
 
 // 使用实现了PeerGetter接口的httpGetter从访问远程节点，获取缓存值
@@ -76,10 +91,11 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 	mu.Lock()
 	defer mu.Unlock()
 	g := &Group{
-		name:      name,
-		getter:    getter,
+		name:   name,
+		getter: getter,
 		// 延迟初始化
 		mainCache: cache{cacheBytes: cacheBytes},
+		loader:    &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
