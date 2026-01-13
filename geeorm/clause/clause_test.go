@@ -16,7 +16,7 @@ func testSelect(t *testing.T) {
 	if sql != "select * from User where Name = ? order by Age ASC limit ?" {
 		t.Fatal("failed to build sql")
 	}
-	if !reflect.DeepEqual(vars, []Interface{}{"Tom", 3}) {
+	if !reflect.DeepEqual(vars, []interface{}{"Tom", 3}) {
 		t.Fatal("failed to build SQLVars")
 	}
 }
