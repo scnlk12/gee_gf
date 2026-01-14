@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"geeorm/clause"
 	"reflect"
 )
@@ -94,4 +95,39 @@ func (s *Session) Count() (int64, error) {
 		return 0, err
 	}
 	return tmp, nil
+}
+
+// 链式调用 where, limit, order by
+// Limit adds limit condition to clause
+func (s *Session) Limit(num int) *Session {
+	s.clause.Set(clause.LIMIT, num)
+	return s
+}
+
+// Where adds limit condition to clause
+func (s *Session) Where(desc string, args ...interface{}) *Session {
+	var vars []interface{}
+	s.clause.Set(clause.WHERE, append(append(vars, desc), args...)...)
+	return s
+}
+
+// OrderBy adds order by condition to clause
+func (s *Session) OrderBy(desc string) *Session {
+	s.clause.Set(clause.ORDERBY, desc)
+	return s
+}
+
+// 通过链式调用 可以实现First方法用于返回一条记录
+// 根据传入的类型，利用反射构造切片，调用Limit(1)限制返回的行数, 调用Find方法获取到查询结果
+func (s *Session) First(value interface{}) error {
+	dest := reflect.Indirect(reflect.ValueOf(value))
+	destSlice := reflect.New(reflect.SliceOf(dest.Type())).Elem()
+	if err := s.Limit(1).Find(destSlice.Addr().Interface()); err != nil {
+		return err
+	}
+	if destSlice.Len() == 0 {
+		return errors.New("not found")
+	}
+	dest.Set(destSlice.Index(0))
+	return nil
 }
