@@ -23,6 +23,7 @@ func (s *Session) Insert(values ...interface{}) (int64, error) {
 }
 
 func (s *Session) Find(values interface{}) error {
+	s.CallMethod(BeforeQuery, nil)
 	destSlice := reflect.Indirect(reflect.ValueOf(values))
 	// 获取切片的单个元素的类型destType
 	destType := destSlice.Type().Elem()
@@ -47,6 +48,7 @@ func (s *Session) Find(values interface{}) error {
 		if err := rows.Scan(values...); err != nil {
 			return err
 		}
+		s.CallMethod(AfterQuery, dest.Addr().Interface())
 		// 将dest添加到切片destSlice中
 		// 循环直到所有记录都添加到切片destSlice中
 		destSlice.Set(reflect.Append(destSlice, dest))
