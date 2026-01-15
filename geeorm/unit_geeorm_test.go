@@ -3,6 +3,7 @@ package geeorm
 import (
 	"errors"
 	"geeorm/session"
+	"reflect"
 	"testing"
 )
 
@@ -55,5 +56,21 @@ func transactionCommit(t *testing.T) {
 	_ = s.First(u)
 	if err != nil || u.Name != "Tom" {
 		t.Fatal("failed to commit")
+	}
+}
+
+func TestEngine_Migrate(t *testing.T) {
+	engine := OpenDB(t)
+	defer engine.Close()
+	s := engine.NewSession()
+	_, _ = s.Raw("drop table if exists User;").Exec()
+	_, _ = s.Raw("create table User(Name text primary key, XXX integer)").Exec()
+	_, _ = s.Raw("insert into User(`Name`) values (?), (?)", "Tom", "Sam").Exec()
+	engine.Migrate(&User{})
+
+	rows, _ := s.Raw("select * from User").QueryRows()
+	columns, _ := rows.Columns()
+	if !reflect.DeepEqual(columns, []string{"Name", "Age"}) {
+		t.Fatal("failed to migrate table User, got columns", columns)
 	}
 }
