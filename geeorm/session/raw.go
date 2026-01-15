@@ -12,11 +12,30 @@ import (
 type Session struct {
 	db       *sql.DB // 使用sql.Open()连接数据库成功之后返回的指针
 	dialect  dialect.Dialect
+	tx *sql.Tx // 当tx不为空时, 使用tx执行sql语句，否则使用db执行sql语句。既兼容了原有的执行方式，又提供了对事务的支持
 	refTable *schema.Schema
 	clause   clause.Clause
 	sql      strings.Builder
 	sqlVars  []interface{}
 	// 拼接SQL语句和SQL语句中占位符的对应值 用户调用Raw方法即可改变这两个变量的值
+}
+
+// CommonDB is a minimal function set of db
+type CommonDB interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+var _ CommonDB = (*sql.DB)(nil)
+var _ CommonDB = (*sql.Tx)(nil)
+
+// DB returns tx if a tx begins, otherwise return *sql.DB
+func (s *Session) DB() CommonDB {
+	if s.tx != nil {
+		return s.tx
+	}
+	return s.db
 }
 
 func New(db *sql.DB, dialect dialect.Dialect) *Session {
