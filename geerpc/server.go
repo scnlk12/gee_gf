@@ -44,7 +44,7 @@ func NewServer() *Server {
 
 // Register publishes in the server the set of methods of the
 func (server *Server) Register(rcvr interface{}) error {
-	s := NewServer(rcvr)
+	s := newService(rcvr)
 	if _, dup := server.serviceMap.LoadOrStore(s.name, s); dup {
 		return errors.New("rpc: service already defined:" + s.name)
 	}
@@ -68,7 +68,8 @@ func (server *Server) findService(serviceMethod string) (svc *service, mtype *me
 		err = errors.New("rpc server: can't find service " + serviceName)
 		return
 	}
-	svc = svci.method[methodName]
+	svc = svci.(*service)
+	mtype = svc.method[methodName]
 	if mtype == nil {
 		err = errors.New("rpc server: can't find method " + methodName)
 	}
