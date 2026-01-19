@@ -9,8 +9,6 @@ import (
 	"log"
 	"net"
 	"sync"
-
-	"github.com/kataras/iris/cache/client"
 )
 
 // Call represents an active RPC.
@@ -248,9 +246,9 @@ func (client *Client) Go(serviceMethod string, args, reply interface{}, done cha
 	}
 	call := &Call{
 		ServiceMethod: serviceMethod,
-		Args: args,
-		Reply: reply,
-		Done: done,
+		Args:          args,
+		Reply:         reply,
+		Done:          done,
 	}
 	client.send(call)
 	return call
@@ -259,6 +257,6 @@ func (client *Client) Go(serviceMethod string, args, reply interface{}, done cha
 // Call invokes the named function, waits for it to complete,
 // and returns its error status.
 func (client *Client) Call(serviceMethod string, args, reply interface{}) error {
-	call := <- client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
+	call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
 	return call.Error
 }
