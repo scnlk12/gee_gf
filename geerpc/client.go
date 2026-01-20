@@ -1,6 +1,7 @@
 package geerpc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -284,7 +285,14 @@ func (client *Client) Go(serviceMethod string, args, reply interface{}, done cha
 
 // Call invokes the named function, waits for it to complete,
 // and returns its error status.
-func (client *Client) Call(serviceMethod string, args, reply interface{}) error {
-	call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
-	return call.Error
+// 用户可以使用context.WithTimeout创建具备超时检测能力的context对象来控制
+func (client *Client) Call(ctx context.Context, serviceMethod string, args, reply interface{}) error {
+	call := client.Go(serviceMethod, args, reply, make(chan *Call, 1))
+	select {
+	case <-ctx.Done():
+		client.removeCall(call.Seq)
+		return errors.New("rpc client: call failed:" + ctx.Err().Error())
+	case call := <-call.Done:
+		return call.Error
+	}
 }
