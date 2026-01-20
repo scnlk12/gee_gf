@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 // Call represents an active RPC.
@@ -43,6 +44,47 @@ type Client struct {
 	// shutdown置为true一般是有错误发生
 	closing  bool // user has called Close
 	shutdown bool // server has told us to stop
+}
+
+type clientResult struct {
+	client *Client
+	err    error
+}
+
+type newClientFun func(conn net.Conn, opt *Option) (client *Client, err error)
+
+func dialTimeout(f newClientFun, network, address string, opts ...*Option) (client *Client, err error) {
+	opt, err := parseOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialTimeout(network, address, opt.ConnectTimeout)
+	if err != nil {
+		return nil, err
+	}
+	// close the connection if client is nil
+	defer func() {
+		if err != nil {
+			_ = conn.Close()
+		}
+	}()
+	ch := make(chan clientResult)
+	// 使用子协程执行NewClient, 执行完成后通过信道ch发送结果
+	go func() {
+		client, err := f(conn, opt)
+		ch <- clientResult{client: client, err: err}
+	}()
+	if opt.ConnectTimeout == 0 {
+		result := <-ch
+		return result.client, result.err
+	}
+	select {
+	// 如果time.After()信道先接收到消息，则说明NewClient执行超时，返回错误
+	case <-time.After(opt.ConnectTimeout):
+		return nil, fmt.Errorf("rpc client: connect timeout: expect within %s", opt.ConnectTimeout)
+	case result := <-ch:
+		return result.client, result.err
+	}
 }
 
 var _ io.Closer = (*Client)(nil)
@@ -185,21 +227,7 @@ func parseOptions(opts ...*Option) (*Option, error) {
 // Dial方法便于用户传入服务端地址，创建Client实例
 // Dial connects to an RPC server at the specified network address
 func Dial(network, address string, opts ...*Option) (client *Client, err error) {
-	opt, err := parseOptions(opts...)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := net.Dial(network, address)
-	if err != nil {
-		return nil, err
-	}
-	// close the connection if client is nil
-	defer func() {
-		if client == nil {
-			_ = conn.Close()
-		}
-	}()
-	return NewClient(conn, opt)
+	return dialTimeout(NewClient, network, address, opts...)
 }
 
 // 发送请求
